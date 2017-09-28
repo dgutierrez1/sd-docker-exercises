@@ -1,4 +1,5 @@
 version: '2'
+
 services:
   web:
     build: .
@@ -7,8 +8,20 @@ services:
     volumes:
      - .:/code
 
+
   redis:
     image: "redis:alpine"
+
+  registrator:
+    image: "gliderlabs/registrator:latest"
+    container_name: registrator
+    hostname: ${MYHOST}
+    command: "-ip ${0.0.0.0} consul://${0.0.0.0}:8500"
+    ports:
+      - 8500
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+
 
   balancer:
     image: dockercloud/haproxy
@@ -21,6 +34,15 @@ services:
       - back-tier
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+
+  consul:
+    image: troyfontaine/consul-server
+    container_name: consul
+    ports:
+      - 8500:8500
+    command: "-server -bootstrap"
+    hostname: ${MYHOST}
 
 
 networks:
