@@ -1,52 +1,67 @@
 version: '2'
 
 services:
-  web:
-    build: .
+
+  consul:
+    image: troyfontaine/consul-server
+    container_name: consul
+    # networks:
+    #   - "0.0.0.0"
     ports:
-      - 8080
-    volumes:
-     - .:/code
+      - 8500:8500
+    command: "-bind=0.0.0.0 -server -bootstrap"
+    hostname: 0.0.0.0
 
-
-  redis:
-    image: "redis:alpine"
 
   registrator:
     image: "gliderlabs/registrator:latest"
     container_name: registrator
-    hostname: ${MYHOST}
-    command: "-ip ${0.0.0.0} consul://${0.0.0.0}:8500"
-    ports:
-      - 8500
+    # hostname: 0.0.0.0
+    command: "consul://consul:8500"
+    links:
+      - "consul"
+    # ports:
+    #   - 8500
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock
 
 
   balancer:
-    image: dockercloud/haproxy
+    image: nginx
     ports:
       - 81:81
     links:
       - web
-    networks:
-      - front-tier
-      - back-tier
+    # networks:
+    #   - front-tier
+    #   - back-tier
     volumes:
+      - /etc/nginx/sites-available
       - /var/run/docker.sock:/var/run/docker.sock
 
+  template:
+    image: "avthart/consul-template"
+    container_name: template
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+      - /home/distribuidos/Documents/Distribuidos/sd-docker-exercises/A00320176/05_docker_compose/nginx.ctml:/tmp/nginx.ctmpl
+    command: '-consul-addr=0.0.0.0:8500 -wait=5s -template="/tmp/nginx.ctmpl:/etc/nginx/sites-available/default:docker kill -s HUP nginx" '
 
-  consul:
-    image: troyfontaine/consul-server
-    container_name: consul
+  redis:
+    image: "redis:alpine"
+
+  web:
+    build: .
+    container_name: web
     ports:
-      - 8500:8500
-    command: "-server -bootstrap"
-    hostname: ${MYHOST}
+      - 8080
+      - 5000:5000
+    volumes:
+     - .:/code
 
-
-networks:
-  front-tier:
-    driver: bridge
-  back-tier:
-    driver: bridge
+#
+# networks:
+#   front-tier:
+#     driver: bridge
+#   back-tier:
+#     driver: bridge
